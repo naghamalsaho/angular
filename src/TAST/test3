@@ -1,0 +1,52 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: '',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div>
+      <h2>{{ unknownTitle }}</h2>
+
+      <div *ngMagic="let item of products">
+        {{ item.name }}
+      </div>
+
+      <div *ngFor="let product of products" (click)="selectProduct(product)">
+        <p>{{ anotherMissingVar }}</p>
+        <button (click)="buyProduct(product)"></button>
+      </div>
+
+      <img [src]="imageNotDeclared" />
+
+      <div *ngFor="let product of products">
+        <p>{{ product.nonExistingProp }}</p>
+      </div>
+    </div>
+  `
+,})
+export class AppComponent {
+  products = [
+    {
+      name: 'منتج 1',
+      image: 'https://via.placeholder.com/150',
+      details: hhh
+    },
+    {
+      name: 'منتج 2',
+      image: 'https://via.placeholder.com/150',
+      details: 'تفاصيل 2'
+    }
+  ];
+
+  selectedProduct = this.products[0];
+
+  selectProduct(product: any) {
+    this.selectedProduct = product;
+  }
+
+  buyProduct(product: any) {
+    let x = 'dummy';
+  }
+}

@@ -1,0 +1,31 @@
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'root',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div>
+      <button (click)="decrement()">-</button>
+      <span>{{ counter }}</span>
+      <button (click)="increment()">+</button>
+      <button (click)="reset()">Reset</button>
+    </div>
+   `,
+})
+export class AppComponent {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+
+  increment() {
+    this.count += 2;
+  }
+
+  decrement() {
+    this.count--;
+  }
+}

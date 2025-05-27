@@ -1,0 +1,54 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+  <div>
+  <!-- 2 -->
+  <div>
+    <!-- left -->
+    <div>
+      <div>
+        <h2>{{ selectedProduct.name + ' - اسم المنتج' }}</h2>
+        <img
+          [src]="selectedProduct.image  'https://via.placeholder.com/300'"
+          alt="image"
+        />
+        <p>{{ selectedProduct.details + ' - تفاصيل المنتج' }}</p>
+      </div>
+    </div>
+
+    <!-- section -->
+    <div>
+      <div>
+        <div *ngFor="let product of products" (click)="selectProduct(product)">
+          <h4>{{ product.name + ' - اسم المنتج' }}</h4>
+          <img
+            [src]="product.image  'https://via.placeholder.com/150'"
+            alt="صورة المنتج"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  `,
+
+})
+export class AppComponent {
+  products = [
+    { name: 'منتج 1', image: 'https://via.placeholder.com/150', details: 'تفاصيل المنتج 1' },
+    { name: 'منتج 2', image: 'https://via.placeholder.com/150', details: 'تفاصيل المنتج 2' },
+    { name: 'منتج 3', image: 'https://via.placeholder.com/150', details: 'تفاصيل المنتج 3' }
+  ];
+
+  selectedProduct = this.products[0];
+
+  selectProduct(product: any) {
+    this.selectedProduct = product;
+  }
+}
