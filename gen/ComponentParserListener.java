@@ -1,4 +1,4 @@
-// Generated from C:/Users/Lenovo/IdeaProjects/untitled6/src/Antlr/ComponentParser.g4 by ANTLR 4.13.2
+// Generated from C:/Users/Lenovo/IdeaProjects/angular/src/Antlr/ComponentParser.g4 by ANTLR 4.13.2
 package gen;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 

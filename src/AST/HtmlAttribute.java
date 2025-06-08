@@ -4,26 +4,37 @@ public class HtmlAttribute {
     private String name;
     private String value;
 
-    public HtmlAttribute() {
+    // مُنشئ فارغ (قد تحتاجه إذا أردت إنشاء الكائن ثم تعيين الحقول لاحقاً)
+    public HtmlAttribute() { }
+
+    // مُنشئ يُعطي الاسم والقيمة مباشرة
+    public HtmlAttribute(String name, String value) {
+        this.name = name;
+        this.value = value;
     }
 
+    // Getter للاسم
     public String getName() {
-        return this.name;
+        return name;
     }
 
-    public void setName(String var1) {
-        this.name = var1;
+    // Setter للاسم
+    public void setName(String name) {
+        this.name = name;
     }
 
+    // Getter للقيمة
     public String getValue() {
-        return this.value;
+        return value;
     }
 
-    public void setValue(String var1) {
-        this.value = var1;
+    // Setter للقيمة
+    public void setValue(String value) {
+        this.value = value;
     }
 
+    @Override
     public String toString() {
-        return "\nHtmlAttribute{\nname='" + this.name + "'\n, value='" + this.value + "'}";
+        return name + "=\"" + value + "\"";
     }
 }

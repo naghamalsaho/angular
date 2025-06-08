@@ -16,67 +16,27 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import static org.antlr.v4.runtime.CharStreams.fromFileName;
+
 /*
 public class main {
     public static void main(String[] args) {
         try {
-            String filepath = "C:\\Users\\Lenovo\\IdeaProjects\\untitled6\\src\\TAST\\test3";
 
-            // قراءة الملف وتحليله
-            CharStream cs = fromFileName(filepath);
-            ComponentLexer lexer = new ComponentLexer(cs);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            ComponentParser parser = new ComponentParser(tokens);
-            ParseTree tree = parser.component(); // يبدأ من القاعدة component
-
-            // ✅ أنشئ جدول الرموز
-            SymbolTable symbolTable = new SymbolTable();
-
-            // ✅ أنشئ الزائر مع جدول الرموز
-            BaseVisitor visitor = new BaseVisitor(symbolTable);
-
-            // ✅ قم بالزيارة
-            Object result = visitor.visit(tree);
-
-            // ✅ عرض نتائج الـ AST
-            System.out.println("نتيجة الـ AST من visit():");
-            System.out.println(result);
-
-            // ✅ عرض جدول الرموز
-            symbolTable.print();
-
-            // ✅ عرض الأخطاء الدلالية إن وُجدت
-            symbolTable.printErrors();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-*/
-
-public class main {
-    public static void main(String[] args) {
-        try {
-            // 1) مسار ملف المصدر
             String filepath = "C:\\Users\\Lenovo\\IdeaProjects\\angular\\src\\TAST\\test3";
 
-            // 2) مسار ملف الإخراج للأخطاء الدلالية
             String semanticErrorOutputPath = "C:\\Users\\Lenovo\\Desktop\\an.txt";
 
-            // 3) إنشاء Lexer و TokenStream و Parser
+
             CharStream cs = fromFileName(filepath);
             ComponentLexer lexer = new ComponentLexer(cs);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             ComponentParser parser = new ComponentParser(tokens);
 
-            // لمنع عرض أي خطأ نحوي في الـ console
             parser.removeErrorListeners();
 
-            // 4) بناء الـ Parse Tree
             ParseTree tree = parser.component();
 
-            // 5) إنشاء جدول الرموز وتطبيق الزائر
+
             SymbolTable symbolTable = new SymbolTable();
             BaseVisitor visitor = new BaseVisitor(symbolTable, filepath);
             Object result = visitor.visit(tree);
@@ -85,19 +45,18 @@ public class main {
             System.out.println("نتيجة الـ AST من visit():");
             System.out.println(result);
 
-            // 7) طباعة جدول الرموز على الشاشة
             symbolTable.print();
 
-            // 8) جمع الأخطاء الدلالية من ErrorManager وطباعة ملخص سريع
+
             @SuppressWarnings("unchecked")
             List<SemanticErrorg> semErrors = (List<SemanticErrorg>)(List<?>) ErrorManager.getErrors();
             if (!semErrors.isEmpty()) {
-                System.out.println("🛑 أخطاء دلالية (ملخص سريع في الـconsole):");
+                System.out.println("🛑console):");
                 for (SemanticErrorg err : semErrors) {
                     System.out.println(err.toString());
                 }
             } else {
-                System.out.println("✅ لا توجد أخطاء دلالية.");
+                System.out.println("✅  .");
             }
 
             // 9) كتابة الأخطاء الدلالية فقط إلى ملف خارجي
@@ -113,8 +72,107 @@ public class main {
                 }
             }
 
-            // 10) إعلام المستخدم بمكان الملف
-            System.out.println("تمّ إنشاء تقرير الأخطاء الدلالية في: " + semanticErrorOutputPath);
+
+            System.out.println(": " + semanticErrorOutputPath);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}*/
+
+
+public class main {
+    public static void main(String[] args) {
+        try {
+
+            String filepath = "C:\\Users\\Lenovo\\IdeaProjects\\angular\\src\\TAST\\test3";
+
+            String semanticErrorOutputPath = "C:\\Users\\Lenovo\\Desktop\\an.txt";
+
+            CharStream cs = fromFileName(filepath);
+            ComponentLexer lexer = new ComponentLexer(cs);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            ComponentParser parser = new ComponentParser(tokens);
+
+            parser.removeErrorListeners();
+
+            ParseTree tree = parser.component();
+
+            SymbolTable selectorTable       = new SymbolTable();
+            SymbolTable nestingTable        = new SymbolTable();
+            SymbolTable undeclaredVarTable  = new SymbolTable();
+            SymbolTable redeclaredTable     = new SymbolTable();
+            SymbolTable unknownMethodTable  = new SymbolTable();
+            SymbolTable unknownPropertyTable= new SymbolTable();
+            SymbolTable invalidDirectiveTable = new SymbolTable();
+
+            BaseVisitor visitor = new BaseVisitor(
+                    filepath,
+                    selectorTable,
+                    nestingTable,
+                    undeclaredVarTable,
+                    redeclaredTable,
+                    unknownMethodTable,
+                    unknownPropertyTable,
+                    invalidDirectiveTable
+
+            );
+
+
+            Object result = visitor.visit(tree);
+
+
+            System.out.println(" AST  visit():");
+            System.out.println(result);
+
+
+            System.out.println("\n📦 symboltable MissingSelectorChecker:");
+            selectorTable.print();
+
+            System.out.println("\n📦 symboltable InvalidNestingChecker:");
+            nestingTable.print();
+
+            System.out.println("\n📦 symboltable UndeclaredVariableChecker:");
+            undeclaredVarTable.print();
+
+            System.out.println("\n📦 symboltable RedeclaredIdentifierChecker:");
+            redeclaredTable.print();
+
+            System.out.println("\n📦 symboltable UnknownMethodCallChecker:");
+            unknownMethodTable.print();
+
+            System.out.println("\n📦 symboltable UnknownPropertyChecker:");
+            unknownPropertyTable.print();
+
+            System.out.println("\n📦 symboltable InvalidDirectiveChecker:");
+            invalidDirectiveTable.print();
+
+
+            @SuppressWarnings("unchecked")
+            List<SemanticErrorg> semErrors = (List<SemanticErrorg>)(List<?>) ErrorManager.getErrors();
+            if (!semErrors.isEmpty()) {
+                System.out.println("\n🛑 semantic errors (console):");
+                for (SemanticErrorg err : semErrors) {
+                    System.out.println(err.toString());
+                }
+            } else {
+                System.out.println("\n✅ there are no semantic errors.");
+            }
+
+            Files.createDirectories(Paths.get(semanticErrorOutputPath).getParent());
+            try (PrintWriter out = new PrintWriter(new FileWriter(semanticErrorOutputPath))) {
+                if (!semErrors.isEmpty()) {
+                    out.println("🛑 semantic errors:");
+                    for (SemanticErrorg err : semErrors) {
+                        out.println(err.toString());
+                    }
+                } else {
+                    out.println("✅ there are no semantic errors.");
+                }
+            }
+
+            System.out.println("semantic error report: " + semanticErrorOutputPath);
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -13,14 +13,13 @@ public class InvalidDirectiveChecker {
         this.symbolTable = symbolTable;
     }
 
-    // أضفنا fileName و lineNumber للمعاملات
     public void check(String directiveName, String fileName, int lineNumber) {
         if (!allowedDirectives.contains(directiveName)) {
             symbolTable.reportError(
-                    "Invalid Directive",                                 // نوع الخطأ
-                    "التوجيه '*" + directiveName + "' غير مدعوم.",        // رسالة الخطأ
-                    fileName,                                            // اسم الملف
-                    lineNumber                                           // رقم السطر
+                    "Invalid Directive",                                 //
+                    " '*" + directiveName + "'  not supported.",        //
+                    fileName,                                            //
+                    lineNumber                                           //
             );
         }
     }

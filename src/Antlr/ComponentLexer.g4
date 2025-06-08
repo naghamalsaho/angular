@@ -1,4 +1,4 @@
- lexer grammar ComponentLexer;
+lexer grammar ComponentLexer;
 
 IMPORT          : 'import'  ;
 FROM            : 'from'   ;
@@ -50,6 +50,7 @@ SPACE   : [ \t\r\n]+ -> skip ;
 
 SRC_ATTRIBUTE : 'src' '=' STRING_LITERAL ;
 
+ATTRIBUTE_NAME  : IDENTIFIER ;
 HTML_TAG_OPEN_DIV
     : '<div' (SPACE (ATTRIBUTE_NAME '=' ATTRIBUTE_VALUE | DYNAMIC_ATTRIBUTE | CUSTOM_DIRECTIVE | EVENT_BINDING))* '>'
     ;
@@ -61,7 +62,7 @@ HTML_TAG_CLOSE_H2     : '</h2>';
 HTML_TAG_OPEN_IMG
     : '<img'
     ;
-
+HTML_TAG_OPEN_SLASH   : '</' ;
 HTML_TAG_CLOSE_IMG     : '/>';
 HTML_TAG_OPEN_P
     : '<p>'
@@ -70,9 +71,13 @@ HTML_TAG_OPEN_P
 HTML_TAG_CLOSE_P
     : '</p>'
     ;
-HTML_TAG_OPEN_BUTTON
-        : '<button' (SPACE (ATTRIBUTE_NAME '=' ATTRIBUTE_VALUE | DYNAMIC_ATTRIBUTE | EVENT_BINDING))* '>'
-        ;
+//HTML_TAG_OPEN_BUTTON
+        //: '<button' (SPACE (ATTRIBUTE_NAME '=' ATTRIBUTE_VALUE | DYNAMIC_ATTRIBUTE | EVENT_BINDING))* '>'
+      //  ;
+      HTML_TAG_OPEN_BUTTON
+          : '<button'
+          ;
+
 HTML_TAG_CLOSE_BUTTON
         : '</button>'
         ;
@@ -109,7 +114,6 @@ MULTIPLY : '*';
 DIV :'/' ;
 MODULUS: '%';
 
-ATTRIBUTE_NAME  : IDENTIFIER ;
 ATTRIBUTE_VALUE : '"' ( ~["\\] | '\\' . )* '"'
                       | '\'' ( ~['\\] | '\\' . )* '\'';
 

@@ -10,29 +10,81 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
-    private String currentFileName;
+  /*  private String currentFileName;
     private final SymbolTable symbolTable;
     private final UndeclaredVariableChecker undeclaredChecker;
     private final RedeclaredIdentifierChecker redeclaredChecker;
     private final UnknownMethodCallChecker methodChecker;
     private final InvalidDirectiveChecker directiveChecker;
     private final MissingSelectorChecker selectorChecker;
+    private  final InvalidNestingChecker nestingChecker;
     Set<String> checkedVariables = new HashSet<>();
+*/
+  private String currentFileName;
+  private final SymbolTable selectorTable;
+    private final SymbolTable nestingTable;
+    private final SymbolTable undeclaredVarTable;
+    private final SymbolTable redeclaredTable;
+    private final SymbolTable unknownMethodTable;
+   // private final SymbolTable unknownPropertyTable;
+    private final SymbolTable invalidDirectiveTable;
+    // إذا أضفت Checkers جدد، أنشئ هنا جدولاً موازياً
 
-    public BaseVisitor(SymbolTable symbolTable,String currentFileName) {
-        this.symbolTable = symbolTable;
+    // 👇 Checkers التي تستخدم كل واحدٍ جدولَه الخاص
+    private final MissingSelectorChecker selectorChecker;
+    private final InvalidNestingChecker nestingChecker;
+    private final UndeclaredVariableChecker undeclaredChecker;
+    private final RedeclaredIdentifierChecker redeclaredChecker;
+    private final UnknownMethodCallChecker methodChecker;
+    //private final UnknownPropertyChecker propertyChecker;
+    private final InvalidDirectiveChecker directiveChecker;
+    // وهكذا لأي Checker جديد
+
+    // للحفاظ على المتغيرات التي فحصناها داخل ngFor أو غيره
+    private final Set<String> checkedVariables = new HashSet<>();
+
+    public BaseVisitor(  String currentFileName,
+                         SymbolTable selectorTable,
+                         SymbolTable nestingTable,
+                         SymbolTable undeclaredVarTable,
+                         SymbolTable redeclaredTable,
+                         SymbolTable unknownMethodTable,
+                         SymbolTable unknownPropertyTable,
+                         SymbolTable invalidDirectiveTable) {
+
         this.currentFileName = currentFileName;
+
+        // ربط كل جدول برمزي بالفاحص المناسب
+        this.selectorTable        = selectorTable;
+        this.nestingTable         = nestingTable;
+        this.undeclaredVarTable   = undeclaredVarTable;
+        this.redeclaredTable      = redeclaredTable;
+        this.unknownMethodTable   = unknownMethodTable;
+      //  this.unknownPropertyTable = unknownPropertyTable;
+        this.invalidDirectiveTable = invalidDirectiveTable;
+
+        // إنشاء المثيلات فعليًّا
+        this.selectorChecker     = new MissingSelectorChecker(selectorTable);
+        this.nestingChecker      = new InvalidNestingChecker(nestingTable);
+        this.undeclaredChecker   = new UndeclaredVariableChecker(undeclaredVarTable);
+        this.redeclaredChecker   = new RedeclaredIdentifierChecker(redeclaredTable);
+        this.methodChecker       = new UnknownMethodCallChecker(unknownMethodTable);
+        //this.propertyChecker     = new UnknownPropertyChecker(unknownPropertyTable,  Map.of());
+        this.directiveChecker    = new InvalidDirectiveChecker(invalidDirectiveTable);
+       /* this.symbolTable = symbolTable;
+        this.currentFileName = currentFileName;
+        this.nestingChecker=new InvalidNestingChecker(symbolTable);
         this.undeclaredChecker = new UndeclaredVariableChecker(symbolTable);
         this.redeclaredChecker = new RedeclaredIdentifierChecker(symbolTable);
         this.methodChecker = new UnknownMethodCallChecker(symbolTable);
         this.directiveChecker = new InvalidDirectiveChecker(symbolTable);
         this.selectorChecker = new MissingSelectorChecker(symbolTable);
+
+        */
+
     }
     @Override
     public Object visitImportStatement(ComponentParser.ImportStatementContext ctx) {
@@ -69,20 +121,20 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
 
 
 
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
-    }
+//    public SymbolTable getSymbolTable() {
+//        return symbolTable;
+//    }
 
     @Override
     public ComponentConfig visitComponentConfigg(ComponentParser.ComponentConfiggContext ctx) {
         ComponentConfig config = new ComponentConfig();
-
+        int lineNumber = ctx.getStart().getLine();
         // ١) selector
         if (ctx.STRING_LITERAL().size() > 0) {
             String rawSelector = ctx.STRING_LITERAL(0).getText();
             String selector = stripQuotes(rawSelector);
             config.setSelector(selector);
-
+            selectorChecker.check(selector,  currentFileName, lineNumber);
             // ✅ تحقق من وجود selector
        //     selectorChecker.check(selector);
         } else {
@@ -225,47 +277,148 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
 
 
 */
+  @Override
+  public HtmlAttribute visitHtmlAttributes(ComponentParser.HtmlAttributesContext ctx) {
+      HtmlAttribute attribute = new HtmlAttribute();
+
+      String text = ctx.getText();
+      Token startToken = ctx.getStart();
+      int type = startToken.getType();
+      int lineNumber = startToken.getLine();
+
+      switch (type) {
+          // حالات src="..." أو alt="..."
+          case ComponentLexer.SRC_ATTRIBUTE:
+          case ComponentLexer.ALT_ATTRIBUTE:
+              // مثال: src="image.png" أو alt="نص بديل"
+              String[] parts = text.split("=", 2);
+              if (parts.length == 2) {
+                  attribute.setName(parts[0]);
+                  attribute.setValue(stripQuotes(parts[1]));
+              }
+              break;
+
+          case ComponentLexer.DYNAMIC_ATTRIBUTE:
+              // صيغ مثل: [src]="imageNotDeclared"
+              // أو أي سمة ديناميكية أخرى
+              int eqIndexDyn = text.indexOf('=');
+              if (eqIndexDyn != -1) {
+                  // الجزء قبل '=' يحتوي على "[src]" مثلاً
+                  String bracketPart = text.substring(0, eqIndexDyn).trim();   // "[src]"
+                  // الجزء بعد '=' هو قيمة نصية مثل "\"imageNotDeclared\""
+                  String valuePart = text.substring(eqIndexDyn + 1).trim();     // "\"imageNotDeclared\""
+
+                  // استخراج اسم السمة من داخل القوسين المربّعين: "[src]" → "src"
+                  String name = bracketPart.replaceAll("^\\[|\\]$", "");
+                  // إزالة علامات الاقتباس المفردة أو المزدوجة من القيمة
+                  String value = stripQuotes(valuePart);
+
+                  // إذا كانت القيمة تمثل IDENTIFIER صالح (مثل "imageNotDeclared")
+                  if (value.matches("[a-zA-Z_$][a-zA-Z0-9_$]*")) {
+                      // نتحقّق إن لم يكن هذا المتغيّر مُعرّفًا في جدول الرموز
+                      undeclaredChecker.check(value, currentFileName, lineNumber);
+                      undeclaredVarTable.add(value, "hhh",currentFileName, lineNumber);
+                  }
+
+                  attribute.setName(name);
+                  attribute.setValue(value);
+              } else {
+                  // إذا لم يُوجَد '=' لسبب غير متوقَّع
+                  attribute.setName(text);
+                  attribute.setValue(null);
+              }
+              break;
+
+          case ComponentLexer.EVENT_BINDING:
+              // صيغ مثل: (click)="selectProduct(product)"
+              int eqIndexEvt = text.indexOf('=');
+              if (eqIndexEvt != -1) {
+                  String evName  = text.substring(0, eqIndexEvt).trim();   // "(click)"
+                  String evValue = text.substring(eqIndexEvt + 1).trim(); // "\"selectProduct(product)\""
+                  attribute.setName(evName);
+                  attribute.setValue(stripQuotes(evValue));
+                  // **اختياري**: إذا أردت التحقّق من المتغير داخل selectProduct(product)
+                  // يمكنك استخراج الكلمة داخل القوسين وفحصها هنا أيضًا:
+                  // String inside = stripQuotes(evValue); // "selectProduct(product)"
+                  // String[] partsEvt = inside.split("[()]+");
+                  // if (partsEvt.length >= 2) {
+                  //     String arg = partsEvt[1].split("[^a-zA-Z0-9_$]")[0]; // "product"
+                  //     undeclaredChecker.check(arg, currentFileName, lineNumber);
+                  // }
+              } else {
+                  attribute.setName(text);
+                  attribute.setValue(null);
+              }
+              break;
+
+          case ComponentLexer.CUSTOM_DIRECTIVE:
+              // صيغ مثل: *ngFor="let product of products" أو *ngMagic="let item of products"
+              int eqIndexDir = text.indexOf('=');
+              if (eqIndexDir != -1) {
+                  String dName  = text.substring(0, eqIndexDir).trim();   // "*ngFor" أو "*ngMagic"
+                  String dValue = text.substring(eqIndexDir + 1).trim(); // "\"let product of products\""
+                  String inner  = stripQuotes(dValue);                    // "let product of products"
+
+                  // تحليل مبسّط: نفترض الصيغة "let X of Y"
+                  String[] partsDir = inner.replaceAll("\\s+", " ").split(" ");
+                  if (partsDir.length == 4 && "let".equals(partsDir[0]) && "of".equals(partsDir[2])) {
+                      String loopVar    = partsDir[1]; // "product" أو "item"
+                      String collection = partsDir[3]; // "products"
+
+                      // 1) نتأكد من أن "products" مسجل كـ Field أو LocalVar مسبقًا
+                      undeclaredChecker.check(collection, currentFileName, lineNumber);
+
+                      // 2) نضيف المتغير المؤقت (loopVar) إلى جدول الرموز كـ TemplateVar
+                      redeclaredTable.add(loopVar, "TemplateVar", currentFileName, lineNumber);
+                  }
+
+                  attribute.setName(dName);
+                  attribute.setValue(inner);
+              } else {
+                  attribute.setName(text);
+                  attribute.setValue(null);
+              }
+              break;
+
+          default:
+              // إذا صادفنا أي توكن غير متوقع
+              System.err.println("نوع توكن غير معروف في visitHtmlAttributes: " + text);
+              return null;
+      }
+
+      return attribute;
+  }
     @Override
-    public HtmlAttribute visitHtmlAttributes(ComponentParser.HtmlAttributesContext ctx) {
-        HtmlAttribute attribute = new HtmlAttribute();
+    public HtmlElement visitButton(ComponentParser.ButtonContext ctx) {
+        // 1) ننشئ عنصر مثل HtmlElement (قد يكون ButtonElement إذا تفضّل)
+        ButtonElement element = new ButtonElement(); // أو: HtmlElement element = new HtmlElement("button");
 
-        String text = ctx.getText();
-        Token startToken = ctx.getStart();  // يعطيك أول توكن
-        int type = startToken.getType();
+        // 2) نأخذ السياق الفعليّ buttonElement من الـ ButtonContext
+        ComponentParser.ButtonElementContext btnCtx = ctx.buttonElement();
+        int lineNumber = btnCtx.getStart().getLine();
 
-        switch (type) {
-            case ComponentLexer.SRC_ATTRIBUTE:
-            case ComponentLexer.ALT_ATTRIBUTE:
-                String[] parts = text.split("=", 2);
-                if (parts.length == 2) {
-                    attribute.setName(parts[0]);
-                    attribute.setValue(stripQuotes(parts[1]));
-                }
-                break;
-
-            case ComponentLexer.DYNAMIC_ATTRIBUTE:
-            case ComponentLexer.EVENT_BINDING:
-            case ComponentLexer.CUSTOM_DIRECTIVE:
-                // اعمل parsing يدوي حسب التنسيق
-                int eqIndex = text.indexOf('=');
-                if (eqIndex != -1) {
-                    String name = text.substring(0, eqIndex).trim();
-                    String value = stripQuotes(text.substring(eqIndex + 1).trim());
-                    attribute.setName(name);
-                    attribute.setValue(value);
-                } else {
-                    attribute.setName(text);
-                    attribute.setValue(null);
-                }
-                break;
-
-            default:
-                System.err.println("نوع توكن غير معروف: " + text);
-                break;
+        // 3) نجلب كل السمات htmlAttribute* من btnCtx (مع الانتباه إلى القوسين)
+        //    هذا يعيد List<HtmlAttributeContext>
+        for (ComponentParser.HtmlAttributeContext attrCtx : btnCtx.htmlAttribute()) {
+            HtmlAttribute attr = visitHtmlAttribute(attrCtx);
+            if (attr != null) {
+                element.getAttributes().add(attr);
+            }
         }
 
-        return attribute;
+        // 4) نعالج أيّ عناصر داخل الزر (htmlElement*) إذا وُجدت
+        for (ComponentParser.HtmlElementContext childHtml : btnCtx.htmlElement()) {
+            HtmlElement childEl = visitHtmlElement(childHtml);
+            if (childEl != null) {
+                element.addChild(childEl);
+                nestingChecker.check(element, childEl, currentFileName, lineNumber);
+            }
+        }
+
+        return element;
     }
+
+
 
 
 
@@ -318,7 +471,8 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         int lineNumber   = ctx.getStart().getLine();
 
         // أضف المتغيّر المحلي إلى جدول الرموز
-        symbolTable.add(varName, "LocalVar", currentFileName, lineNumber);
+        redeclaredTable.add(varName , "TemplateVar", currentFileName, lineNumber);
+      //  undeclaredChecker.check(varName , currentFileName, ctx.getStart().getLine());
         asn.setThis(false); // لأنه variable عادي
         asn.setIdentifier(ctx.IDENTIFIER().getText());
 
@@ -399,21 +553,32 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
     public Object visitMethodDecl(ComponentParser.MethodDeclContext ctx) {
         String methodName = ctx.IDENTIFIER().getText();
         int lineNumber    = ctx.getStart().getLine();
-
+       // redeclaredChecker.check(methodName, "Method", currentFileName, lineNumber);
         // أضف الميثود إلى جدول الرموز
-        symbolTable.add(methodName, "Method", currentFileName, lineNumber);
+      //  symbolTable.add(methodName, "Method", currentFileName, lineNumber);
         // ✅ التحقق من إعادة تعريف الدالة
-       // redeclaredChecker.check(methodName, "Method");
+        Set<String> localParams = new HashSet<>();
         List<Parameter> parameters = new ArrayList<>();
         if (ctx.parameterList() != null) {
             for (ComponentParser.ParameterContext paramCtx : ctx.parameterList().parameter()) {
-                Parameter param = (Parameter) visit(paramCtx);
                 String paramName = paramCtx.IDENTIFIER().getText();
                 int paramLine    = paramCtx.getStart().getLine();
-                symbolTable.add(paramName, "Parameter", currentFileName, paramLine);
-                // ✅ التحقق من إعادة تعريف المعامل داخل نفس الميثود
-         //       redeclaredChecker.check(param.getName(), "Parameter");
 
+                // 1) نفحص تكرار المعامل داخل نفس الدالة فقط:
+                if (localParams.contains(paramName)) {
+                    redeclaredTable.reportError(
+                            "Redeclaration",
+                            "Parameter '" + paramName + "' is already defined in this method.",
+                            currentFileName,
+                            paramLine
+                    );
+                } else {
+                    localParams.add(paramName);
+                    // 2) إذا أردت إضافة اسم المعامل إلى جدول الرموز العام:
+                    //    يُمكنك استخدام هذه السطرَين، أو تعليقه إذا لا تريد أن تطبع اسم المعامل في جدول عام:
+                    // symbolTable.add(paramName, "Parameter", currentFileName, paramLine);
+                }
+                Parameter param = (Parameter) visit(paramCtx);
                 parameters.add(param);
             }
         }
@@ -478,23 +643,21 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
 
     @Override
     public Object visitPair(ComponentParser.PairContext ctx) {
-        // المفتاح: إما STRING_LITERAL أو IDENTIFIER
+        // 1) استخراج المفتاح (key) إما STRING_LITERAL أو IDENTIFIER
         String key;
         if (ctx.STRING_LITERAL(0) != null) {
             key = ctx.STRING_LITERAL(0).getText().replaceAll("^\"|\"$", "");
         } else if (ctx.IDENTIFIER(0) != null) {
             key = ctx.IDENTIFIER(0).getText();
         } else {
-            // لا مفتاح => تخطِّي
             return null;
         }
 
-// القيمة: إما STRING_LITERAL أو visit(value) إذا أعمقت النحو
-        String value;
-        // هنا نستخدم ctx.value() بدل ctx.STRING_LITERAL(1)
+        // 2) استخراج القيمة (value) والتحقق من هوية الـ IDENTIFIER
+        String value = null;
         if (ctx.value() != null) {
-            // لنفترض أن value هي STRING_LITERAL فقط
             ComponentParser.ValueContext vctx = ctx.value();
+
             if (vctx.STRING_LITERAL() != null) {
                 value = vctx.STRING_LITERAL().getText().replaceAll("^\"|\"$", "");
             } else if (vctx.NUMBER_LITERAL() != null) {
@@ -502,24 +665,39 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
             } else if (vctx.BOOLEAN_LITERAL() != null) {
                 value = vctx.BOOLEAN_LITERAL().getText();
             } else if (vctx.IDENTIFIER() != null) {
+                // 2a) هنا الجانب الأيمن هو IDENTIFIER، مثل "hhh"
                 value = vctx.IDENTIFIER().getText();
+
+                // 2b) نجري Check على هذا المتغير
+                undeclaredChecker.check(
+                        value,
+                        currentFileName,
+                        vctx.getStart().getLine()
+                );
             } else {
-                // حالياً ندعم هذه الأنواع فقط
+                // حالة thisAccess أو حالات أخرى
                 value = vctx.getText();
             }
         } else {
-            // بدل الاعتماد على STRING_LITERAL(1)
+            // 3) إن لم تنطبق vctx، ننظر إلى ctx.STRING_LITERAL(1) أو ctx.IDENTIFIER(1)
             if (ctx.STRING_LITERAL(1) != null) {
                 value = ctx.STRING_LITERAL(1).getText().replaceAll("^\"|\"$", "");
             } else if (ctx.IDENTIFIER(1) != null) {
                 value = ctx.IDENTIFIER(1).getText();
+                undeclaredChecker.check(
+                        value,
+                        currentFileName,
+                        ctx.getStart().getLine()
+                );
             } else {
                 return null;
             }
         }
 
+        // 4) إرجاع زوج المفتاح والقيمة كبنية AST (Pair)
         return new Pair(key, value);
     }
+
 
 
 
@@ -745,6 +923,10 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         } else if (ctx instanceof ComponentParser.DynamicHtmlContentContext) {
             return visitDynamicHtmlContent((ComponentParser.DynamicHtmlContentContext) ctx);
         }
+        else if (ctx instanceof ComponentParser.ButtonContext) {
+            // 🟢 مهمّ جداً: نمرّر ctx نفسه، وهو ButtonContext
+            return visitButton((ComponentParser.ButtonContext) ctx);
+        }
         //else if (ctx instanceof ComponentParser.ButtonContext) {
           //  return visitButton(((ComponentParser.ButtonContext) ctx).buttonElement());
         //} else if (ctx instanceof ComponentParser.SpanContext) {
@@ -867,17 +1049,29 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
 
     @Override
     public HtmlElement visitH2(ComponentParser.H2Context ctx) {
-        HtmlElement element = new HtmlElement();
-        element.setTagName("h2");
+        HtmlElement element = new HtmlElement("h2");
 
-        // ناخد كل النصّ مع الوسوم
-        String full = ctx.getText();
-        // نجيب المحتوى بين الوسوم
-        int start = full.indexOf('>') + 1;
-        int end   = full.lastIndexOf('<');
-        String inner = (start >= 0 && end >= start) ? full.substring(start, end) : "";
+        // 1) احصل على H2ElementContext من داخل H2Context
+        ComponentParser.H2ElementContext h2El = ctx.h2Element();
 
-        element.setContent(inner);
+        // 2) إذا وُجد dynamicContent داخل الـ h2Element
+        if (h2El.dynamicContent() != null) {
+            // النص الخام مثل "{{ unknownTitle }}"
+            String raw = h2El.dynamicContent().getText();
+
+            // إزالة الأقواس {{ }}
+            String innerExpr = raw.replaceAll("\\{\\{|\\}\\}", "").trim();
+
+            // نفترض أن التعبير على شكل varName أو varName.otherProp
+            String varName = innerExpr.split("\\.")[0];
+
+            // 3) استدعاء الـ undeclaredChecker مع اسم الملف ورقم السطر
+            undeclaredChecker.check(varName, currentFileName, ctx.getStart().getLine());
+
+            // 4) خزّن المحتوى النصي داخل العنصر إذا رغبت
+            element.setContent(raw);
+        }
+
         return element;
     }
 
@@ -907,11 +1101,25 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         // 4) السمات الديناميكيّة (dynamicAttribute()) أيضاً في imgCtx
         for (ComponentParser.DynamicAttributeContext dynAttrCtx : imgCtx.dynamicAttribute()) {
             HtmlAttribute a = new HtmlAttribute();
-            String name = dynAttrCtx.IDENTIFIER().getText();       // مثال: "src"
-            String value = dynAttrCtx.STRING_LITERAL().getText();  // مثال: "'...'"
-            // إزالة علامات الاقتباس المحيطة إذا رغبت:
+
+            // 4a) اسم السمة (مثلاً "src")
+            String name = dynAttrCtx.IDENTIFIER().getText();
+
+            // 4b) قيمة السمة الخام (مثلاً "'imageNotDeclared'")
+            String rawValue = dynAttrCtx.STRING_LITERAL().getText();
+
+            // إزالة علامات الاقتباس المحيطة
+            String value = rawValue.replaceAll("^\"|\"$", "").replaceAll("^'|'$", "");
+
+            // 4c) تحقق من أن القيمة هي IDENTIFIER (مثل imageNotDeclared) وليس نص ثابت
+            if (value.matches("[a-zA-Z_$][a-zA-Z0-9_$]*")) {
+                // نمرّر اسم الملف ورقم السطر للشيك
+                undeclaredChecker.check(value, currentFileName, dynAttrCtx.getStart().getLine());
+            }
+
+            // 4d) نستكمل بناء HtmlAttribute
             a.setName(name);
-            a.setValue(value.replaceAll("^\"|\"$", "").replaceAll("^'|'$", ""));
+            a.setValue(value);
             attrs.add(a);
         }
 
@@ -920,6 +1128,7 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         // 5) العنصر <img> وسم ذاتيّ الإغلاق، فلا محتوى داخلي:
         return element;
     }
+
 
 
     @Override
@@ -1035,6 +1244,82 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
     }
 */
 @Override
+public HtmlAttribute visitHtmlAttribute(ComponentParser.HtmlAttributeContext ctx) {
+    HtmlAttribute attribute = new HtmlAttribute();
+    int lineNumber = ctx.getStart().getLine();
+
+    // 1) CUSTOM_DIRECTIVE: مثل "*ngFor=\"let x of items\""
+    if (ctx.CUSTOM_DIRECTIVE() != null) {
+        String raw = ctx.CUSTOM_DIRECTIVE().getText();      // "*ngFor=\"let x of items\""
+        int eqIdx = raw.indexOf('=');
+        String dirName    = raw.substring(1, eqIdx).trim(); // "ngFor"
+        String rawContent = raw.substring(eqIdx + 1).trim(); // "\"let x of items\""
+        String inner      = stripQuotes(rawContent);         // "let x of items"
+
+        attribute.setName("*" + dirName);
+        attribute.setValue(inner);
+
+        // إذا كنت تريد التحقّق الدلالي:
+        String[] parts = inner.replaceAll("\\s+", " ").split(" ");
+        if (parts.length == 4 && "let".equals(parts[0]) && "of".equals(parts[2])) {
+            undeclaredChecker.check(parts[3], currentFileName, lineNumber);        // "items"
+            undeclaredVarTable.add(parts[1], "TemplateVar", currentFileName, lineNumber); // "x"
+        }
+    }
+    // 2) EVENT_BINDING: مثل "(click)=\"buyProduct(product)\"" أو "(dblclick)=\"foo(x,y)\""
+    else if (ctx.EVENT_BINDING() != null) {
+        String raw = ctx.EVENT_BINDING().getText();         // "(click)=\"buyProduct(product)\""
+        int eqIdx = raw.indexOf('=');
+        String evNameRaw  = raw.substring(0, eqIdx).trim();   // "(click)"
+        String evValueRaw = raw.substring(eqIdx + 1).trim();  // "\"buyProduct(product)\""
+        String evValue    = stripQuotes(evValueRaw);          // "buyProduct(product)"
+
+        attribute.setName(evNameRaw);
+        attribute.setValue(evValue);
+
+        // تحليــل الدالة والمعاملات داخل قيمة الـeventBinding
+        int parenOpen  = evValue.indexOf('(');
+        int parenClose = evValue.lastIndexOf(')');
+        if (parenOpen != -1 && parenClose > parenOpen) {
+            String methodName = evValue.substring(0, parenOpen).trim();        // "buyProduct"
+            String argsList   = evValue.substring(parenOpen + 1, parenClose).trim(); // "product"
+
+            methodChecker.check(methodName, currentFileName, lineNumber);
+            if (!argsList.isEmpty()) {
+                for (String rawArg : argsList.split(",")) {
+                    String arg = rawArg.trim(); // مثال: "product"
+                    if (!arg.isEmpty()) {
+                        undeclaredChecker.check(arg, currentFileName, lineNumber);
+                    }
+                }
+            }
+        }
+    }
+    // 3) DYNAMIC_ATTRIBUTE: مثل "[src]=\"imageNotDeclared\""
+    else if (ctx.DYNAMIC_ATTRIBUTE() != null) {
+        String raw = ctx.DYNAMIC_ATTRIBUTE().getText();    // "[src]=\"imageNotDeclared\""
+        int eqIdx = raw.indexOf('=');
+        String propName  = raw.substring(1, eqIdx - 1).trim();  // "src"
+        String rawValue  = raw.substring(eqIdx + 1).trim();    // "\"imageNotDeclared\""
+        String propValue = stripQuotes(rawValue);               // "imageNotDeclared"
+
+        attribute.setName(propName);
+        attribute.setValue(propValue);
+
+        undeclaredChecker.check(propValue, currentFileName, lineNumber);
+    }
+    // 4) ATTRIBUTE_NAME '=' ATTRIBUTE_VALUE: مثل name="value"
+    else if (ctx.ATTRIBUTE_NAME() != null && ctx.ATTRIBUTE_VALUE() != null) {
+        attribute.setName(ctx.ATTRIBUTE_NAME().getText());       // مثال: name
+        attribute.setValue(stripQuotes(ctx.ATTRIBUTE_VALUE().getText())); // "value"
+    }
+
+    return attribute;
+}
+
+
+
+@Override
     public Component visitComponentDefinition(ComponentParser.ComponentDefinitionContext ctx) {
         Component component = new Component();
         if (ctx.importStatements() != null) {
@@ -1068,6 +1353,7 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         for (String part : parts) {
             if (!part.isBlank() && Character.isLetter(part.charAt(0))) {
               //  undeclaredChecker.check(part); // تحقق من المتغير
+                undeclaredChecker.check(part, currentFileName, ctx.getStart().getLine());
             }
         }
 
@@ -1080,22 +1366,47 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         ClassDeclaration classDecl = new ClassDeclaration();
 
         String className = ctx.className().getText();
+        int lineNumber = ctx.getStart().getLine();
+
+
+        // 1) تأكد من أن AppComponent لم يكرّر اسمه
+        redeclaredChecker.check(className, "Class", currentFileName, lineNumber);
+        //symbolTable.add(className, "Class", currentFileName, lineNumber);
+
         classDecl.setClassName(className);
-        int lineNumber  = ctx.getStart().getLine();
-        // ✅ التحقق من إعادة تعريف الكلاس
-        //redeclaredChecker.check(className, "Class");
 
-        symbolTable.add(className, "Class", currentFileName, lineNumber);
+        // 2) فحص أسماء الميثودات في هذا الكلاس وإضافتها مرة واحدة:
+        Set<String> methodNames = new HashSet<>();
+        for (ParseTree child : ctx.classBody().children) {
+            if (child instanceof ComponentParser.MethodDeclContext methodCtx) {
+                String methodName = methodCtx.IDENTIFIER().getText();
+                int methodLine = methodCtx.getStart().getLine();
 
-        classDecl.setClassName(className);
+                if (methodNames.contains(methodName)) {
+                    // لو ظهر هذا الاسم مرتين داخل نفس الكلاس:
+                    unknownMethodTable.reportError(
+                            "Redeclaration",
+                            "Method '" + methodName + "' is already defined in this class.",
+                            currentFileName,
+                            methodLine
+                    );
+                } else {
+                    methodNames.add(methodName);
+                    // نضيف اسمه مرة واحدة فقط:
+                    redeclaredChecker.check(methodName, "Method", currentFileName, methodLine);
+                  //  symbolTable.add(methodName, "Method", currentFileName, methodLine);
+                }
+            }
+        }
 
+        // 3) زيارة باقي أعضاء الكلاس (fields و assignments) دون إعادة فحص أسماء الميثودات:
         ClassBody classBody = (ClassBody) visit(ctx.classBody());
         classDecl.setClassBody(classBody);
 
-
-
         return classDecl;
     }
+
+
 
 
     @Override
@@ -1105,7 +1416,7 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         int lineNumber    = ctx.getStart().getLine();
 
         // أضف الحقل إلى جدول الرموز
-        symbolTable.add(varName, "Field", currentFileName, lineNumber);
+        redeclaredTable.add(varName, "Field", currentFileName, lineNumber);
         // ✅ التحقق من إعادة تعريف الحقل
       //  redeclaredChecker.check(varName, "Field");
 

@@ -10,14 +10,14 @@ public class MissingSelectorChecker {
         this.symbolTable = symbolTable;
     }
 
-    // أضفنا fileName و lineNumber للمعاملات
+
     public void check(String selector, String fileName, int lineNumber) {
         if (selector == null || selector.isEmpty()) {
             symbolTable.reportError(
-                    "Missing Selector",                                // نوع الخطأ
-                    "المكون لا يحتوي على خاصية 'selector'.",           // رسالة الخطأ
-                    fileName,                                          // اسم الملف
-                    lineNumber                                         // رقم السطر
+                    "Missing Selector",                                //
+                    "   the component does not contain a property 'selector'.",           //
+                    fileName,
+                    lineNumber                                         //
             );
         }
     }

@@ -6,7 +6,7 @@ import java.util.List;
 public class ErrorManager {
     private static final List<SemanticException> errors = new ArrayList<>();
 
-    // إذا أردت فعلاً تجاهل الطباعة الفورية نهائيًّا:
+
     public static void logError(SemanticException e) {
         errors.add(e);
     }

@@ -1,10 +1,10 @@
 package AST;
 
-public class ArrayAccess {
+public  class ArrayAccess {
     private String identifier;
     private Expression index;
 
-    public ArrayAccess() {
+    public  ArrayAccess() {
     }
 
     public String getIdentifier() {

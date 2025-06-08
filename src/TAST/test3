@@ -15,10 +15,12 @@ import { CommonModule } from '@angular/common';
 
       <div *ngFor="let product of products" (click)="selectProduct(product)">
         <p>{{ anotherMissingVar }}</p>
-        <button (click)="buyProduct(product)"></button>
+        <button (click)="buyProduct(product)">
+        <div>   div  </div></button>
       </div>
 
       <img [src]="imageNotDeclared" />
+<button (dblclick)="foo(x, y)"></button>
 
       <div *ngFor="let product of products">
         <p>{{ product.nonExistingProp }}</p>
@@ -27,6 +29,7 @@ import { CommonModule } from '@angular/common';
   `
 ,})
 export class AppComponent {
+
   products = [
     {
       name: 'منتج 1',
@@ -49,4 +52,9 @@ export class AppComponent {
   buyProduct(product: any) {
     let x = 'dummy';
   }
+buyProduct(product: any) {
+    let b = 'dummy';
+
+  }
+
 }

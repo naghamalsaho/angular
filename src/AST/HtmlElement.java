@@ -3,7 +3,7 @@ package AST;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HtmlElement {
+public class HtmlElement  extends ASTNode{
     private String tagName;
     private List<HtmlAttribute> attributes;
     private List<HtmlElement> children;

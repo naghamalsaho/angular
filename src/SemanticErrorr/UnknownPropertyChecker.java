@@ -1,4 +1,4 @@
-package SemanticErrorr;
+/*package SemanticErrorr;
 
 import AST.SymbolTable;
 
@@ -37,3 +37,4 @@ public class UnknownPropertyChecker {
         }
     }
 }
+*/

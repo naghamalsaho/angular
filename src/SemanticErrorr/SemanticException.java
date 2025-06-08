@@ -19,7 +19,7 @@ public class SemanticException extends Exception {
 
     @Override
     public String toString() {
-        return "❌ [" + getClass().getSimpleName() + "] في الملف: " + fileName + " السطر: " + lineNumber + " - " + getMessage();
+        return "❌ [" + getClass().getSimpleName() + "] in file : " + fileName + " line: " + lineNumber + " - " + getMessage();
     }
 }
 

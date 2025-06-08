@@ -37,7 +37,7 @@ classBody
     : (fieldDeclaration | methodDeclaration | assignment)*              #ClassBodyy
     ;
 
-assignment
+    assignment
     : THIS DOT IDENTIFIER EQUAL expression SEMICOLON                    #ThisAssignment
     | IDENTIFIER EQUAL expression SEMICOLON                             #VarAssignment
     ;
@@ -50,7 +50,7 @@ primaryExpression
     : IDENTIFIER                                                        #IdentifierExpr
     | literal                                                           #LiteralExpr
     | arrayAccess                                                       #ArrayAccessExpr
-    | '(' expression ')'                                                #ParenExpr
+    | LEFT_PAREN expression RIGHT_PAREN                                                #ParenExpr
     ;
 
 arrayAccess
@@ -105,7 +105,7 @@ value
     ;
 
 parameters
-    : (type variableName (',' type variableName)*)?
+    : (type variableName (COMMA  type variableName)*)?
     ;
 
 variableName
@@ -191,23 +191,29 @@ pElement
 genericElement
     : HTML_TAG_OPEN IDENTIFIER (htmlAttributes)* HTML_TAG_CLOSE
     ;
-
 buttonElement
-    : HTML_TAG_OPEN_BUTTON (CUSTOM_DIRECTIVE | EVENT_BINDING)* (DYNAMIC_CONTENT | STRING_LITERAL | IDENTIFIER | MINUS | PLUS)* HTML_TAG_CLOSE_BUTTON
+    : HTML_TAG_OPEN_BUTTON htmlAttribute* GREAND_THAN
+      (htmlElement)*
+
+      HTML_TAG_CLOSE_BUTTON
     ;
+
 
 spanElement
     : HTML_TAG_OPEN_SPAN (CUSTOM_DIRECTIVE | EVENT_BINDING)* (DYNAMIC_CONTENT | STRING_LITERAL)* HTML_TAG_CLOSE_SPAN
     ;
 
 dynamicAttribute
-    : '[' IDENTIFIER ']' '=' STRING_LITERAL
+    : LEFT_BRACKET IDENTIFIER RIGHT_BRACKET EQUAL STRING_LITERAL
     ;
 
 htmlAttribute
-    : DYNAMIC_ATTRIBUTE
-    | ATTRIBUTE_NAME '=' ATTRIBUTE_VALUE
+    : EVENT_BINDING
+    | DYNAMIC_ATTRIBUTE
+    | CUSTOM_DIRECTIVE
+    | ATTRIBUTE_NAME EQUAL ATTRIBUTE_VALUE
     ;
+
 
 dynamicContent
     : DYNAMIC_CONTENT (PLUS STRING_LITERAL)*
@@ -228,12 +234,16 @@ htmlAttributes
     | ALT_ATTRIBUTE
     | DYNAMIC_ATTRIBUTE
     | eventBinding
-    | customDirective
+
     ;
 
     customDirective
-        : '*' IDENTIFIER '=' ATTRIBUTE_VALUE
+        : MULTIPLY IDENTIFIER EQUAL  ATTRIBUTE_VALUE
         ;
+eventBinding
+    : LEFT_PAREN IDENTIFIER RIGHT_PAREN EQUAL  (
+          ATTRIBUTE_VALUE
+        | IDENTIFIER LEFT_PAREN IDENTIFIER (COMMA IDENTIFIER)* RIGHT_PAREN
+      )
+    ;
 
-    eventBinding
-        : '(' IDENTIFIER ')' '=' ATTRIBUTE_VALUE;

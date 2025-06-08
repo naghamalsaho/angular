@@ -16,8 +16,8 @@
         <PerGrammarGenerationSettings>
           <option name="fileName" value="$PROJECT_DIR$/src/Antlr/ComponentParser.g4" />
           <option name="autoGen" value="true" />
-          <option name="outputDir" value="C:\Users\Lenovo\IdeaProjects\untitled6\antlr" />
-          <option name="libDir" value="C:\Users\Lenovo\IdeaProjects\untitled6\antlr" />
+          <option name="outputDir" value="C:\Users\Lenovo\IdeaProjects\angular" />
+          <option name="libDir" value="C:\Users\Lenovo\IdeaProjects\angular" />
           <option name="encoding" value="" />
           <option name="pkg" value="gen" />
           <option name="language" value="" />
