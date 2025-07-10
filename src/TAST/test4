@@ -1,0 +1,15 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component
+export class AppComponent {
+  products = [
+    { name: 'P1', image: '…', details: 'تفاصيل 1' },
+    { name: 'P2', image: '…', details: 'تفاصيل 2' }
+  ];
+
+  selectedProduct = this.products[0];
+
+  selectProduct(product: any) { this.selectedProduct = product; }
+  buyProduct(product: any) { let x = 'dummy'; }
+}

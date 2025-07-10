@@ -106,7 +106,7 @@ public class main {
             SymbolTable unknownMethodTable  = new SymbolTable();
             SymbolTable unknownPropertyTable= new SymbolTable();
             SymbolTable invalidDirectiveTable = new SymbolTable();
-
+            SymbolTable  missingComponentConfigTable =new SymbolTable();
             BaseVisitor visitor = new BaseVisitor(
                     filepath,
                     selectorTable,
@@ -115,7 +115,8 @@ public class main {
                     redeclaredTable,
                     unknownMethodTable,
                     unknownPropertyTable,
-                    invalidDirectiveTable
+                    invalidDirectiveTable,
+                    missingComponentConfigTable
 
             );
 
@@ -147,6 +148,8 @@ public class main {
 
             System.out.println("\n📦 symboltable InvalidDirectiveChecker:");
             invalidDirectiveTable.print();
+            System.out.println("\n📦 symboltable MissingComponentConfigChecker:");
+            missingComponentConfigTable.print();
 
 
             @SuppressWarnings("unchecked")

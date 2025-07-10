@@ -42,7 +42,7 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
     //private final UnknownPropertyChecker propertyChecker;
     private final InvalidDirectiveChecker directiveChecker;
     // وهكذا لأي Checker جديد
-
+    private final SymbolTable missingComponentConfigTable;
     // للحفاظ على المتغيرات التي فحصناها داخل ngFor أو غيره
     private final Set<String> checkedVariables = new HashSet<>();
 
@@ -53,7 +53,8 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
                          SymbolTable redeclaredTable,
                          SymbolTable unknownMethodTable,
                          SymbolTable unknownPropertyTable,
-                         SymbolTable invalidDirectiveTable) {
+                         SymbolTable invalidDirectiveTable,
+                         SymbolTable missingComponentConfigTable) {
 
         this.currentFileName = currentFileName;
 
@@ -65,7 +66,7 @@ public  class BaseVisitor extends ComponentParserBaseVisitor<Object>  {
         this.unknownMethodTable   = unknownMethodTable;
       //  this.unknownPropertyTable = unknownPropertyTable;
         this.invalidDirectiveTable = invalidDirectiveTable;
-
+        this.missingComponentConfigTable = missingComponentConfigTable;
         // إنشاء المثيلات فعليًّا
         this.selectorChecker     = new MissingSelectorChecker(selectorTable);
         this.nestingChecker      = new InvalidNestingChecker(nestingTable);
@@ -1319,27 +1320,33 @@ public HtmlAttribute visitHtmlAttribute(ComponentParser.HtmlAttributeContext ctx
 
 
 
-@Override
+    @Override
     public Component visitComponentDefinition(ComponentParser.ComponentDefinitionContext ctx) {
         Component component = new Component();
+
+        // 1) imports
         if (ctx.importStatements() != null) {
             ImportStatements importStatements = (ImportStatements) visit(ctx.importStatements());
             component.setImportStatements(importStatements);
         }
 
-        ComponentConfig componentConfig = (ComponentConfig) visit(ctx.componentConfig());
-        component.setComponentConfig(componentConfig);
-
-        String compName = componentConfig.getSelector().replaceAll("^\"|\"$", "");
-
-        // افتح سكوب جديد للمكون
-
-
-       // visitChildren(ctx);
-
+        // 2) componentConfig — تحقق قبل الزيارة!
+        if (ctx.componentConfig() != null) {
+            ComponentConfig cfg = (ComponentConfig) visit(ctx.componentConfig());
+            component.setComponentConfig(cfg);
+        } else {
+            int line = ctx.getStart().getLine();
+            missingComponentConfigTable.reportError(
+                    "Missing Component Config",
+                    "the component does not contain a componentConfig block.",
+                    currentFileName,
+                    line
+            );
+        }
 
         return component;
     }
+
     @Override
     public Object visitDynamicContent(ComponentParser.DynamicContentContext ctx) {
         String content = ctx.getText(); // "{{ unknownTitle }}"
